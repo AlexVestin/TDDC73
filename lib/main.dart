@@ -20,8 +20,14 @@ class _HomeState extends State<Home> {
   var imageMap = {"5": "mastercard.png", "4": "visa.png", "34" : "amex.png",
   "37" : "amex.png", "6" : "discover.png", "30" : "dinersclub.png", "36" : "dinersclub.png",
   "38" : "dinersclub.png"};
+  var listYear = ["YYYY"];
 
   GlobalKey<FlipCardState> cardKey = GlobalKey<FlipCardState>();
+
+  _HomeState(){
+    Iterable<int>.generate(12).forEach((index) =>
+        listYear.add((2019 + index).toString()));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +58,7 @@ class _HomeState extends State<Home> {
                           });
                         },
                         inputFormatters: <TextInputFormatter>[
-                          CreditCardFormatter(),
+                          CreditCardFormatter(imageName),
                           LengthLimitingTextInputFormatter(19)
                         ] ,
                         decoration: InputDecoration(
@@ -93,7 +99,8 @@ class _HomeState extends State<Home> {
                                   month = value;
                                 });
                               },
-                              items: <String>["MM","01", "02", "03"]
+                              items: <String>["MM","01", "02", "03", "04", "05"
+                              , "06", "07", "08", "09", "10", "11", "12"]
                                   .map<DropdownMenuItem<String>>((String value) {
                                 return (DropdownMenuItem<String>(
                                     value: value, child: Text("$value")));
@@ -108,8 +115,7 @@ class _HomeState extends State<Home> {
                                   year = value;
                                 });
                               },
-                              items: <String>["YYYY","2027", "2026", "2025"]
-                                  .map<DropdownMenuItem<String>>((String value) {
+                              items: listYear.map<DropdownMenuItem<String>>((String value) {
                                 return (DropdownMenuItem<String>(
                                     value: value, child: Text("$value")));
                               }).toList(),
