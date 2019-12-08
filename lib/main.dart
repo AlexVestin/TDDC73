@@ -59,7 +59,6 @@ class _HomeState extends State<Home> {
                         },
                         inputFormatters: <TextInputFormatter>[
                           CreditCardFormatter(imageName),
-                          LengthLimitingTextInputFormatter(19)
                         ] ,
                         decoration: InputDecoration(
                           border: OutlineInputBorder(
