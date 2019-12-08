@@ -93,10 +93,10 @@ class _MyHomePageState extends State<MyHomePage> {
 
     print(response.statusCode);
     if (response.statusCode == 200) {
-      int total = 0;
+      int total = 1;
       List contributors =json.decode(response.body);
       for(int i = 0; i < contributors.length; i++) {
-        total += contributors[i]["total"] + 1;
+        total += contributors[i]["total"];
       }
 
       return total.toString();
@@ -259,7 +259,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           children: <Widget>[
                             ListTile(
                               leading: Icon(Icons.album),
-                              title: Text(selectedTitle),
+                              title: Text(selectedRep.userName + "/" + selectedTitle),
                               subtitle: Text(selectedRep.description != null ? selectedRep.description : " No description"),
                             ),
                             Row(
