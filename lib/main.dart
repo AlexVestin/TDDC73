@@ -1,4 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/Repo.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:date_format/date_format.dart';
+
+// https://medium.com/@alfianlosari/building-github-flutter-app-part-1-trending-repositories-list-f48683ac9bef
+// https://flutter.dev/docs/cookbook/networking/fetch-data
+// https://medium.com/nonstopio/flutter-future-builder-with-list-view-builder-d7212314e8c9
 
 void main() => runApp(MyApp());
 
@@ -9,33 +17,15 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
+      home: MyHomePage(title: 'Github trending stuff'),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
   MyHomePage({Key key, this.title}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
 
   final String title;
 
@@ -44,125 +34,295 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  Future<List<Repo>> repos;
+  Repo selectedRep;
+  int pageIndex = 0;
+  String selectedLanguage = "all";
+  bool fetching = false;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+
+  Future<String> license;
+  Future<String> nrBranches;
+  Future<String> nrCommits;
+
+
+
+  Future<String> fetchNrBranches() async {
+
+    final url = Uri.https('api.github.com', 'repos/${selectedRep.userName}/${selectedRep.title}/branches', {
+      'per_page': "1"
     });
+    final response = await http.get(url);
+
+    print(url);
+    print(response.statusCode);
+    if (response.statusCode == 200) {
+      // https://stackoverflow.com/questions/33242631/github-api-get-the-number-of-branches-of-a-repo-without-listing-all-its-branch
+      //List sp = response.headers["Link"].split("page=");
+      //print(sp[sp.length - 1].split("<"));
+      if(!response.headers.containsKey("Link")) {
+        return "1";
+      }
+
+      //print(response.headers["Link"]);
+      return "more than one branch";
+    } else {
+      return "not null but still error";
+    }
+  }
+
+  Future<String> fetchLicense() async {
+
+    final url = Uri.https('api.github.com', 'repos/${selectedRep.userName}/${selectedRep.title}/license');
+    final response = await http.get(url);
+
+    print("status?");
+    print(response.statusCode);
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body)["license"]["name"];
+    } else {
+      return "No license found";
+    }
+  }
+
+
+  Future<String> fetchNrCommits() async {
+    final url = Uri.https('api.github.com', '/repos/${selectedRep.userName}/${selectedRep.title}/stats/contributors');
+    final response = await http.get(url);
+
+    print(response.statusCode);
+    if (response.statusCode == 200) {
+      int total = 0;
+      List contributors =json.decode(response.body);
+      for(int i = 0; i < contributors.length; i++) {
+        total += contributors[i]["total"] + 1;
+      }
+
+      return total.toString();
+    } else {
+      throw Exception('Failed to load post');
+    }
+  }
+
+  Future<List<Repo>> fetchRepos() async {
+    fetching = true;
+    final lastWeek = DateTime.now().subtract(Duration(days: 7));
+    final formatted = formatDate(lastWeek, [yyyy, '-', mm, '-', dd]);
+
+    final String lang = selectedLanguage == "all" ? "" : "language:$selectedLanguage";
+
+    final url = Uri.https('api.github.com', '/search/repositories', {
+      'q': 'created:>$formatted $lang',
+      'language': 'python',
+      'order': 'desc',
+      'page': '0',
+      'per_page': '25',
+      'sort': 'stars'
+    });
+
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final jsonRes = json.decode(response.body);
+      fetching = false;
+      return Repo.fromJson(jsonRes["items"]);
+    } else {
+      throw Exception('Failed to load post');
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    repos = fetchRepos();
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    String selectedTitle = (selectedRep != null) ? selectedRep.title : "";
     return Scaffold(
-      appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Container(
-        margin: const EdgeInsets.only(top: 40.0),
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal)
-          children: <Widget>[
-            Container(
-              height:128,
-              width: 128,
-              child: Image(
-                    image: NetworkImage('https://is2-ssl.mzstatic.com/image/thumb/Purple123/v4/75/eb/72/75eb7269-de76-73bf-638b-35a4d3c1218b/source/256x256bb.jpg')
-                ),
-            ),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: <Widget>[
-                RaisedButton(
-                  onPressed: null,
-                  child: Text(
-                      'button',
-                      style: TextStyle(fontSize: 20)
-                  ),
-                ),
-                RaisedButton(
-                  onPressed: null,
-                  child: Text(
-                      'button',
-                      style: TextStyle(fontSize: 20)
-                  ),
-                )
-              ],
-            )
-            ,  Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: <Widget>[
-                RaisedButton(
-                  onPressed: null,
-                  child: Text(
-                      'button',
-                      style: TextStyle(fontSize: 20)
-                  ),
-                ),
-                RaisedButton(
-                  onPressed: null,
-                  child: Text(
-                      'button',
-                      style: TextStyle(fontSize: 20)
-                  ),
-                )
-              ],
-            ),
-            Container(
-              margin: const EdgeInsets.only(top: 40.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-
-                children: <Widget>[
-                  Text(
-                    'Email',
-                  ),
-
-                  Container(
-                    color: Colors.yellow,
-                    width: 230,
-                    constraints: BoxConstraints(minWidth: 230.0, minHeight: 25.0),
-                    child: TextField( ),
-                  )
-
-
-                ],
-              )
-            )
-
-          ],
+        appBar: AppBar(
+          title: Text(widget.title),
         ),
-      ),
+        bottomSheet: (
+          FlatButton (
+          child:  DropdownButton<String>(
+            hint: Text("language"),
+            value: selectedLanguage,
+            onChanged: (String value) {
+              setState(() {
 
-    );
+                selectedLanguage = value;
+                repos = fetchRepos();
+              });
+            },
+            items: <String>["all", "python", "php", "javascript", "C", "rust"]
+                .map<DropdownMenuItem<String>>((String value) {
+              return (DropdownMenuItem<String>(
+                  value: value, child: Text("$value")));
+            }).toList(),
+          )
+        )
+
+        ),
+
+        body: Container(
+            child: (pageIndex == 0)
+                ? Column(
+                    children: <Widget>[
+
+                      Expanded(
+                          child:
+                        FutureBuilder<List<Repo>>(
+                          future: repos,
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData && !fetching) {
+                              return ListView.builder(
+                                shrinkWrap: true,
+                                itemCount: snapshot.data.length,
+                                itemBuilder: (listContext, index) {
+                                  Repo repo = snapshot.data[index];
+                                  String stars = repo.stars.toString();
+
+                                  String forks = repo.forks.toString();
+
+
+                                  String description = repo.description != null ? repo.description : "No description provided";
+
+
+
+                                  return GestureDetector(
+                                      onTap: () => setState(() {
+                                            selectedRep = repo;
+                                            nrBranches = fetchNrBranches();
+                                            nrCommits = fetchNrCommits();
+                                            license = fetchLicense();
+
+                                            pageIndex = 1;
+                                            print("set");
+                                          }),
+                                      child: Card(
+                                        child: ListTile(
+                                          title: Text(repo.title),
+                                          subtitle: Text(description),
+                                          trailing: Container(
+                                              alignment: Alignment.topLeft,
+                                              width: 100,
+                                              height: 100,
+                                              child: Column(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.start,
+                                                children: <Widget>[
+                                                  Text('Stars: $stars'),
+                                                  Text('Followers: $forks'),
+                                                ],
+                                              )),
+                                          isThreeLine: true,
+                                        ),
+                                      ));
+                                },
+                              );
+                            } else if (snapshot.hasError) {
+                              return Container(
+                                  width: 100,
+                                  height: 100,
+                                  child: Text("oopsie woopsie"));// ${snapshot.error}
+                            }
+
+                            return Center(child: CircularProgressIndicator());
+                          },
+                        )
+                      )
+                    ],
+                  )
+                : Container(
+                    child: Column(
+                    children: <Widget>[
+                      RaisedButton(
+                        color: Colors.blue,
+                        child: Text(
+                          "back",
+                          style: TextStyle(
+                            color: Colors.grey[100],
+                          ),
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            pageIndex = 0;
+                          });
+                        },
+                      ),
+                      Card(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            ListTile(
+                              leading: Icon(Icons.album),
+                              title: Text(selectedTitle),
+                              subtitle: Text(selectedRep.description != null ? selectedRep.description : " No description"),
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: <Widget>[
+                                Text("Stargazers:"),
+                                Text(selectedRep.stars.toString()),
+                              ],
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: <Widget>[
+                                Text("forks:"),
+                                Text(selectedRep.forks.toString()),
+                              ],
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: <Widget>[
+                                Text("Watchers:"),
+                                Text(selectedRep.watchers.toString()),
+                              ],
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: <Widget>[
+                                Text("branches:"),
+                                FutureBuilder(
+                                      future: nrBranches,
+                                      builder: (context, snapshot) {
+                                          return Text( snapshot.hasData ? snapshot.data : "Loading");
+                                      }
+                                ),
+                              ],
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: <Widget>[
+                                Text("commits:"),
+                                FutureBuilder(
+                                    future: nrCommits,
+                                    builder: (context, snapshot) {
+                                      return Text( snapshot.hasData ? snapshot.data : "Loading");
+                                    }
+                                ),
+                              ],
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: <Widget>[
+                                Text("license:"),
+                                FutureBuilder(
+                                    future: license,
+                                    builder: (context, snapshot) {
+                                      return Text( snapshot.hasData ? snapshot.data : "Loading");
+                                    }
+                                ),
+                              ],
+                            )
+                          ],
+                        ),
+                      ),
+                    ],
+                  ))));
   }
 }
