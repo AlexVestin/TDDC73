@@ -45,6 +45,8 @@ flutter:
   # like this:
   assets:
      - assets/flutter.jpg
+     - assets/phone.jpg
+     - assets/wide.jpg
   #  - images/a_dot_burr.jpeg
   #  - images/a_dot_ham.jpeg
 
