@@ -19,8 +19,9 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       home: Scaffold(
+        resizeToAvoidBottomPadding: false,
         appBar: AppBar(
-          title: Text("Demo carousel"),
+          title: Text("Flutter SDK Demo"),
         ),
         body: Column(
           children: <Widget>[
