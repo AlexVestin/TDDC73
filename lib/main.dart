@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_proj/carousel.dart';
-
+import 'PasswordStrength.dart';
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
@@ -24,6 +24,7 @@ class MyApp extends StatelessWidget {
         ),
         body: Column(
           children: <Widget>[
+
             Container(
               margin: EdgeInsets.all(10),
               width: 400,
@@ -33,6 +34,16 @@ class MyApp extends StatelessWidget {
                 displayType: DisplayType.HORIZONTAL,
                 itemBuilder: CarouselObject.objectBuilder(objects),
               ),
+            ),  Container(
+                width: 200,
+                child: PasswordStrength(
+                    obscureText: true,
+                    padding: 1,
+                    colorFrom: Color.fromRGBO(255, 0, 0, 1),
+                    colorTo: Color.fromRGBO(0, 255, 0, 1),
+                    stops: 10,
+                    drawType: DrawType.CIRCLE,
+                )
             ),
             Row(
               children: <Widget>[
