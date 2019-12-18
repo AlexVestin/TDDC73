@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
-import 'package:password_strength/password_strength.dart';
+//import 'package:password_strength/password_strength.dart';
 import 'CustomCanvas.dart';
+import 'package:password_strength/src/common.dart' show estimateCommonDictionaryStrength;
+import "dart:math";
 
 class PasswordStrength extends StatefulWidget {
   final OnChangeCallback onChange;
@@ -19,6 +21,14 @@ class PasswordStrength extends StatefulWidget {
   final String label;
   final TextStyle textStyle;
 
+  //optional arguments for strength check. If you don't care about
+  // looking at some type, you can disable by setting it to false.
+  final bool smallLetters;
+  final bool bigLetters;
+  final bool specialChars;
+  final bool numbers;
+
+
   PasswordStrength({
     Key key,
     this.colors,
@@ -33,6 +43,10 @@ class PasswordStrength extends StatefulWidget {
     this.onChange,
     this.measurePasswordStrength,
     this.passwordStrength,
+    this.smallLetters = true,
+    this.bigLetters = true,
+    this.numbers = true,
+    this.specialChars = true,
 
   }) : super(key: key);
 
@@ -79,7 +93,10 @@ class _PasswordStrengthState extends State<PasswordStrength> {
     if(measurePasswordStrength != null) {
       passStrength = measurePasswordStrength(value);
     } else {
-      passStrength = estimatePasswordStrength(value);
+      //passStrength = estimatePasswordStrength(value);
+      passStrength = estimateBruteforceStrength(value, widget.smallLetters, widget.bigLetters,
+      widget.specialChars, widget.numbers) *
+          estimateCommonDictionaryStrength(value);
     }
 
     if(onChange != null) {
@@ -129,6 +146,56 @@ class _PasswordStrengthState extends State<PasswordStrength> {
     );
   }
 }
+
+
+
+/// Estimates the strength of a password against a brute force attack.
+/// The passwords length as well as the characters use are taken into
+/// consideration.
+/// (ADAPTED FROM password_strength package TO LET THE USER DECIDE TYPE)
+double estimateBruteforceStrength(String password, bool small, bool big,
+    bool special, bool numbers) {
+  if (password.isEmpty) return 0.0;
+
+  double charsetBonus = 0.1;
+  double normalizationConstant = 15.0;
+
+
+  if(!small) normalizationConstant -= 1;
+  if(!big) normalizationConstant -= 2;
+  if(!special) normalizationConstant -= 8;
+  if (!numbers) normalizationConstant -= 4;
+  if(normalizationConstant == 0) normalizationConstant += 1;
+
+  // Check which types of characters are used and create an opinionated bonus.
+  if (password.contains(RegExp(r'[a-z]')) && small) {
+    charsetBonus += 1.0;
+  }
+  if (password.contains(RegExp(r'[0-9]')) && (numbers)) {
+    charsetBonus += 4.0;
+  }
+  if (password.contains(RegExp(r'[A-Z]')) && (big)) {
+    charsetBonus += 2.0;
+  }
+  if (password.contains(RegExp(r'[\-_!?@&%*]')) && (special)){
+    charsetBonus += 8.0;
+  }
+
+  charsetBonus = (charsetBonus / normalizationConstant) + 1;
+
+  final logisticFunction = (double x) {
+    return 1.0 / (1.0 + exp(-x));
+  };
+
+  final curve = (double x) {
+    return logisticFunction((x / 3.0) - 4.0);
+  };
+
+  return curve(password.length * charsetBonus);
+}
+
+
+
 
 enum DrawType {
   CIRCLE,
