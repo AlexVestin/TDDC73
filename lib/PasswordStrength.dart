@@ -1,141 +1,91 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
-import 'package:password_strength/password_strength.dart';
-import 'CustomCanvas.dart';
+import 'package:flutter_proj/PasswordStrengthBase.dart';
 
-class PasswordStrength extends StatefulWidget {
-  final OnChangeCallback onChange;
-  final MeasurePasswordStrengthCallback measurePasswordStrength;
-  final PasswordStrengthCallback passwordStrength;
-  final int padding;
-
-  // colors
-  final List<Color> colors;
-  final Color colorFrom;
-  final Color colorTo;
-  final int stops;
-  final DrawType drawType;
-  final bool obscureText;
-  final String label;
-  final TextStyle textStyle;
-
-  PasswordStrength({
-    Key key,
-    this.colors,
-    this.padding,
-    this.textStyle = const TextStyle(color: Color.fromRGBO(0, 0, 0, 1), fontSize: 10.0, fontFamily: 'Roboto'),
-    this.label = "Password Strength",
-    this.drawType = DrawType.LINE,
-    this.colorFrom = const Color.fromRGBO(0, 255, 0, 1),
-    this.colorTo = const Color.fromRGBO(255, 0, 0, 1),
-    this.stops = 5,
-    this.obscureText = true,
-    this.onChange,
-    this.measurePasswordStrength,
-    this.passwordStrength,
-
-  }) : super(key: key);
-
-  @override
-  _PasswordStrengthState createState() => _PasswordStrengthState();
-}
-
-class _PasswordStrengthState extends State<PasswordStrength> {
-
-  OnChangeCallback onChange;
-  MeasurePasswordStrengthCallback measurePasswordStrength;
-  PasswordStrengthCallback passwordStrength;
-  TextField myField;
+class PasswordStrength extends CustomPainter {
   List<Color> colors;
-  Color colorFrom;
+  double strength;
   Color colorTo;
+  Color colorFrom;
   int colorStops;
   int padding;
   DrawType drawType;
   String label;
   TextStyle textStyle;
 
-  double strength = 0;
-  void initState() {
-    super.initState();
-    onChange  = widget.onChange;
-    measurePasswordStrength = widget.measurePasswordStrength;
-    passwordStrength = widget.passwordStrength;
-    colors = widget.colors;
-
-    // Using color to / from
-    colorTo = widget.colorTo;
-    colorFrom = widget.colorFrom;
-    colorStops = widget.stops;
-    padding = widget.padding;
-    drawType = widget.drawType;
-
-    label= widget.label;
-    textStyle= widget.textStyle;
-  }
-
-  void onChangeHandler(String value) {
-    double passStrength = 1;
-    if(measurePasswordStrength != null) {
-      passStrength = measurePasswordStrength(value);
-    } else {
-      passStrength = estimatePasswordStrength(value);
-    }
-
-    if(onChange != null) {
-      onChange(value);
-    }
-
-    setState(() {
-      strength = passStrength;
+  PasswordStrength({
+      @required this.strength,
+      this.textStyle = const TextStyle(color: Color.fromRGBO(0, 0, 0, 1), fontSize: 10.0, fontFamily: 'Roboto'),
+      this.label = "Password Strength",
+      this.drawType = DrawType.LINE,
+      this.colorFrom = const Color.fromRGBO(0, 255, 0, 1),
+      this.colorTo = const Color.fromRGBO(255, 0, 0, 1),
+      this.colors,
+      this.colorStops,
+      this.padding,
     });
+
+  Color getColor(Color color1, Color color2, double percent) {
+    int r = (color1.red + percent * (color2.red - color1.red)).round();
+    int g = (color1.green + percent * (color2.green - color1.green)).round();
+    int b = (color1.blue + percent * (color2.blue - color1.blue)).round();
+    return Color.fromRGBO(r, g, b, 1);
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-        child: Column(
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: Container(
-                    height: 25,
-                    child: CustomPaint(
-                        painter: CustomCanvas(
-                          strength: strength,
-                          colors: this.colors,
-                          colorTo: this.colorTo,
-                          colorFrom: this.colorFrom,
-                          colorStops: this.colorStops,
-                          padding: this.padding,
-                          drawType: this.drawType,
-                          label: this.label,
-                          textStyle: this.textStyle
-                        )
-                      )
-                    )
-                ),
-              ],
-            ),
+  void paint(Canvas canvas, Size size) {
+    var paint = Paint()
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
 
-            TextField(
-              onChanged: onChangeHandler,
-              obscureText: widget.obscureText,
-            ),
-          ],
-        )
+    var _colors = [
+      Color.fromRGBO(255, 0, 0, 1),
+      Color.fromRGBO(200, 50, 0, 1),
+      Color.fromRGBO(120, 120, 0, 1),
+      Color.fromRGBO(100, 200, 0, 1),
+      Color.fromRGBO(0, 255, 0, 1),
+    ];
+    if (colors != null) {
+      _colors = colors;
+      if ((colorTo != Color.fromRGBO(0, 255, 0, 1) ||
+          colorFrom != Color.fromRGBO(255, 0, 0, 1) ||
+          colorStops != 5)) {
+        print(
+            "Color array defined along using colorTo/colorFrom, defaulting to color array");
+      }
+    } else {
+      _colors = [];
+      for (var i = 0; i < colorStops; i++) {
+        _colors.add(getColor(colorFrom, colorTo, i / colorStops));
+      }
+    }
 
-    );
+    for (var i = 0; i < _colors.length; i++) {
+      if (strength > i / _colors.length) {
+        paint.color = _colors[i];
+      } else {
+        paint.color = Color.fromRGBO(100, 100, 100, 0.3);
+      }
+
+      var startX = (i / _colors.length) * size.width;
+      var width = (1 / _colors.length) * size.width;
+      var _padding = padding != null ? padding : width * 0.1;
+
+      double verticalOffset = 20;
+      if (drawType == DrawType.LINE) {
+        canvas.drawLine(Offset(startX + _padding / 2, verticalOffset),
+            Offset(startX + width - _padding, verticalOffset), paint);
+      } else if (drawType == DrawType.CIRCLE) {
+        canvas.drawCircle(Offset(startX + width / 2, verticalOffset), 3, paint);
+      }
+
+      TextSpan span = new TextSpan(style: textStyle, text: label);
+      TextPainter tp =
+          new TextPainter(text: span, textDirection: TextDirection.ltr);
+      tp.layout();
+      tp.paint(canvas, new Offset(0.0, -5.0));
+    }
   }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
-
-enum DrawType {
-  CIRCLE,
-  LINE,
-}
-
-typedef OnChangeCallback = void Function(String value);
-typedef MeasurePasswordStrengthCallback = double Function(String value);
-typedef PasswordStrengthCallback = void Function(double value);
-

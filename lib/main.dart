@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_proj/PasswordStrengthBase.dart';
+import 'package:flutter_proj/PasswordStrengthWithController.dart';
 import 'package:flutter_proj/carousel.dart';
-import 'PasswordStrength.dart';
+import 'PasswordStrengthWithInput.dart';
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
@@ -11,6 +13,8 @@ class MyApp extends StatelessWidget {
   , ["assets/flutter.jpg", "title4"], ["assets/flutter.jpg", "title5"], ["assets/flutter.jpg", "title6"], ["assets/flutter.jpg", "title7"]
   ,["assets/flutter.jpg", "title8"] ,["assets/flutter.jpg", "title9"] ,["assets/flutter.jpg", "title10"]];
 
+  var controller = new TextEditingController();
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -19,6 +23,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       home: Scaffold(
+        resizeToAvoidBottomPadding: false,
         appBar: AppBar(
           title: Text("Demo carousel"),
         ),
@@ -36,14 +41,25 @@ class MyApp extends StatelessWidget {
               ),
             ),  Container(
                 width: 200,
-                child: PasswordStrength(
+                height: 100,
+                child: PasswordStrengthWithInput(
+                  data: PasswordStrengthData(
                     obscureText: true,
                     padding: 1,
                     colorFrom: Color.fromRGBO(255, 0, 0, 1),
                     colorTo: Color.fromRGBO(0, 255, 0, 1),
                     stops: 10,
                     drawType: DrawType.CIRCLE,
+                  ),
+                  //controller: controller,
                 )
+            ),
+            Container (
+              width: 200,
+              height: 30,
+              child: TextField(
+                controller: controller,
+              ),
             ),
             Row(
               children: <Widget>[
